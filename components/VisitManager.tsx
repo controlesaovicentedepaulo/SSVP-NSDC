@@ -51,15 +51,15 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
   });
 
   // Ordenar visitas por data (mais recente primeiro)
-  const sortedVisits = [...filteredVisits].sort((a, b) => 
+  const sortedVisits: Visit[] = [...filteredVisits].sort((a, b) => 
     new Date(b.data).getTime() - new Date(a.data).getTime()
   );
 
   // Paginação
-  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(sortedVisits.length / itemsPerPage);
-  const startIndex = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
-  const endIndex = itemsPerPage === -1 ? sortedVisits.length : startIndex + itemsPerPage;
-  const paginatedVisits = sortedVisits.slice(startIndex, endIndex);
+  const totalPages: number = itemsPerPage === -1 ? 1 : Math.ceil(sortedVisits.length / itemsPerPage);
+  const startIndex: number = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex: number = itemsPerPage === -1 ? sortedVisits.length : startIndex + itemsPerPage;
+  const paginatedVisits: Visit[] = sortedVisits.slice(startIndex, endIndex);
 
   // Resetar página quando mudar filtro ou itens por página
   useEffect(() => {
@@ -564,7 +564,7 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginatedVisits.map(v => (
+            {paginatedVisits.map((v: Visit) => (
               <tr key={v.id} className="hover:bg-slate-50 group cursor-pointer" onClick={() => setSelectedVisit(v)}>
                 <td className="px-6 py-4 text-sm font-medium">
                   <div className="flex items-center gap-2">
