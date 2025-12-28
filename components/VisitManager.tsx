@@ -50,6 +50,22 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
     return familyName.includes(searchLower) || motivo.includes(searchLower) || relato.includes(searchLower);
   });
 
+  // Ordenar visitas por data (mais recente primeiro)
+  const sortedVisits = [...filteredVisits].sort((a, b) => 
+    new Date(b.data).getTime() - new Date(a.data).getTime()
+  );
+
+  // Paginação
+  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(sortedVisits.length / itemsPerPage);
+  const startIndex = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex = itemsPerPage === -1 ? sortedVisits.length : startIndex + itemsPerPage;
+  const paginatedVisits = sortedVisits.slice(startIndex, endIndex);
+
+  // Resetar página quando mudar filtro ou itens por página
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchVisits, itemsPerPage]);
+
   // Sincronizar estado inicial ao editar ou selecionar família
   useEffect(() => {
     if (editingVisit) {
@@ -165,16 +181,16 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
           >
             <FileDown size={20} />
           </button>
-          <button 
-            onClick={() => {
-              setEditingVisit(null);
-              setIsAdding(true);
-            }}
+        <button 
+          onClick={() => {
+            setEditingVisit(null);
+            setIsAdding(true);
+          }}
             className="flex items-center justify-center w-10 h-10 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100"
             title="Registrar Visita"
-          >
+        >
             <Plus size={20} />
-          </button>
+        </button>
         </div>
       </div>
 
@@ -435,7 +451,7 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
                     {selectedVisit.motivo ? (
                       <span className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase">
                         <Info size={12} /> {selectedVisit.motivo}
-                      </span>
+                    </span>
                     ) : (
                       <span className="text-slate-400 text-sm">Não informado</span>
                     )}
