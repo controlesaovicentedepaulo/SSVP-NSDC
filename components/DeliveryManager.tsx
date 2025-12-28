@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Package, Calendar, CheckCircle, User, Users, Search, X, Ban, History, Plus, ArrowLeft, Info, UserCheck, Clock, ChevronRight, AlertTriangle, Trash2 } from 'lucide-react';
+import { Package, Calendar, CheckCircle, User, Users, Search, X, Ban, History, Plus, ArrowLeft, Info, UserCheck, Clock, ChevronRight, AlertTriangle, Trash2, FileDown } from 'lucide-react';
 import { Delivery, Family } from '../types';
 import { addDelivery, deleteDeliveryByFamilyAndDate } from '../db';
+import { generateDeliveriesPDF } from '../utils/pdfUtils';
 
 
 interface DeliveryManagerProps {
@@ -249,9 +250,25 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
               <History className="text-blue-600" size={24} />
               <h3 className="text-xl font-bold">Histórico de Atendimento</h3>
             </div>
-            <button onClick={() => setView('new-delivery')} className="flex items-center gap-2 bg-orange-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-orange-700 transition-all shadow-md shadow-orange-100">
-              <Plus size={20} /> Nova Entrega
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  try {
+                    generateDeliveriesPDF(deliveries, families);
+                  } catch (error) {
+                    console.error('Erro ao gerar PDF:', error);
+                    alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+                  }
+                }}
+                className="flex items-center justify-center w-10 h-10 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-all shadow-md shadow-purple-100"
+                title="Download PDF - Lista de Entregas"
+              >
+                <FileDown size={20} />
+              </button>
+              <button onClick={() => setView('new-delivery')} className="flex items-center justify-center w-10 h-10 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 transition-all shadow-md shadow-orange-100" title="Nova Entrega">
+                <Plus size={20} />
+              </button>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

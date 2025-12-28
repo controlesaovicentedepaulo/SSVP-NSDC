@@ -1,9 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Footprints, Plus, Search, Calendar, User, MessageCircle, Edit, X, ChevronDown, Check, Info, ShieldCheck, UserCog, Trash2, AlertTriangle } from 'lucide-react';
+import { Footprints, Plus, Search, Calendar, User, MessageCircle, Edit, X, ChevronDown, Check, Info, ShieldCheck, UserCog, Trash2, AlertTriangle, FileDown } from 'lucide-react';
 import { Visit, Family, Member } from '../types';
 import { addVisit, updateFamily, updateVisit, deleteVisit } from '../db';
+import { generateVisitsPDF } from '../utils/pdfUtils';
 
 import FamilyManager from './FamilyManager';
 
@@ -18,6 +19,7 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
   const [isAdding, setIsAdding] = useState(false);
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
   const [visitToDelete, setVisitToDelete] = useState<Visit | null>(null);
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [searchVisits, setSearchVisits] = useState('');
   
   // Estados para o Searchable Select
@@ -146,15 +148,32 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
             placeholder="Buscar por família, motivo ou relato..."
           />
         </div>
-        <button 
-          onClick={() => {
-            setEditingVisit(null);
-            setIsAdding(true);
-          }}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100"
-        >
-          <Plus size={20} /> Registrar Visita
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              try {
+                generateVisitsPDF(visits, families);
+              } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+              }
+            }}
+            className="flex items-center justify-center w-10 h-10 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-all shadow-md shadow-purple-100"
+            title="Download PDF - Lista de Visitas"
+          >
+            <FileDown size={20} />
+          </button>
+          <button 
+            onClick={() => {
+              setEditingVisit(null);
+              setIsAdding(true);
+            }}
+            className="flex items-center justify-center w-10 h-10 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100"
+            title="Registrar Visita"
+          >
+            <Plus size={20} />
+          </button>
+        </div>
       </div>
 
       {isAdding && (
@@ -372,6 +391,107 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
         </div>
       )}
 
+      {/* Modal de Detalhes da Visita */}
+      {selectedVisit && createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 bg-emerald-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <Footprints size={24} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg">Detalhes da Visita</h4>
+                  <p className="text-white/80 text-xs uppercase font-bold tracking-widest">
+                    {getFamilyName(selectedVisit.familyId)}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedVisit(null)} 
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase">Data da Visita</label>
+                  <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                    <Calendar size={16} className="text-emerald-500" />
+                    {new Date(selectedVisit.data + 'T00:00:00').toLocaleDateString('pt-BR', { 
+                      day: '2-digit', 
+                      month: 'long', 
+                      year: 'numeric' 
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase">Motivo da Visita</label>
+                  <div>
+                    {selectedVisit.motivo ? (
+                      <span className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase">
+                        <Info size={12} /> {selectedVisit.motivo}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-sm">Não informado</span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase">Vicentinos Presentes</label>
+                  <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                    <User size={16} className="text-emerald-500" />
+                    {selectedVisit.vicentinos.join(', ')}
+                  </div>
+                </div>
+              </div>
+              {selectedVisit.relato && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase">Relato da Visita</label>
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 w-full overflow-hidden">
+                    <div className="flex items-start gap-2 w-full">
+                      <MessageCircle size={16} className="text-slate-400 mt-0.5 shrink-0 flex-shrink-0" />
+                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap break-words flex-1 min-w-0 overflow-wrap-break-word" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                        {selectedVisit.relato}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="pt-4 border-t border-slate-100 flex gap-3">
+                <button 
+                  onClick={() => {
+                    setSelectedVisit(null);
+                    handleEdit(selectedVisit);
+                  }}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                >
+                  <Edit size={18} /> Editar Visita
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelectedVisit(null);
+                    setVisitToDelete(selectedVisit);
+                  }}
+                  className="flex-1 px-6 py-3 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={18} /> Deletar Visita
+                </button>
+                <button 
+                  onClick={() => setSelectedVisit(null)} 
+                  className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-300 transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Modal de Confirmação de Exclusão de Visita */}
       {visitToDelete && createPortal(
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
@@ -415,63 +535,76 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
         document.body
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredVisits.sort((a,b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map(v => (
-          <div key={v.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3 group">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h4 className="font-bold text-slate-800">{getFamilyName(v.familyId)}</h4>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 mt-1 font-medium">
-                  <span className="flex items-center gap-1"><Calendar size={12} /> {v.data}</span>
-                  {v.motivo && (
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Data</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Família</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Motivo</th>
+              <th className="px-6 py-4 text-right"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filteredVisits.sort((a,b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map(v => (
+              <tr key={v.id} className="hover:bg-slate-50 group cursor-pointer" onClick={() => setSelectedVisit(v)}>
+                <td className="px-6 py-4 text-sm font-medium">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={14} className="text-slate-400" />
+                    {new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-bold text-slate-800">{getFamilyName(v.familyId)}</div>
+                </td>
+                <td className="px-6 py-4">
+                  {v.motivo ? (
                     <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold uppercase">
                       <Info size={10} /> {v.motivo}
                     </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">-</span>
                   )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => handleEdit(v)}
-                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                  title="Editar visita"
-                >
-                  <Edit size={16} />
-                </button>
-                <button 
-                  onClick={() => setVisitToDelete(v)}
-                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                  title="Deletar visita"
-                >
-                  <Trash2 size={16} />
-                </button>
-                <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
-                  <Footprints size={20} />
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-slate-50 p-3 rounded-xl">
-              <div className="flex items-start gap-2 mb-2">
-                <MessageCircle size={14} className="text-slate-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-slate-600 leading-relaxed italic line-clamp-3">{v.relato}</p>
-              </div>
-              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
-                <User size={12} className="text-slate-400" />
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">
-                  Por: {v.vicentinos.join(', ')}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(v);
+                      }}
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Editar visita"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setVisitToDelete(v);
+                      }}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Deletar visita"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <Info size={16} className="text-slate-300 opacity-0 group-hover:opacity-100" />
+                    <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
+                      <Footprints size={16} />
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         {filteredVisits.length === 0 && visits.length > 0 && (
-          <div className="md:col-span-2 py-12 text-center text-slate-400 italic bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="py-12 text-center text-slate-400 italic border-t border-slate-100">
             Nenhuma visita encontrada com o termo "{searchVisits}".
           </div>
         )}
         {visits.length === 0 && (
-          <div className="md:col-span-2 py-12 text-center text-slate-400 italic bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="py-12 text-center text-slate-400 italic border-t border-slate-100">
             Nenhuma visita registrada ainda.
           </div>
         )}

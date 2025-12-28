@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, ChevronRight, Phone, MapPin, Calendar, User, FileText, Activity, Home, Heart, Trash2, Edit, Info, Users, Footprints, Package, Search, X, CreditCard, ShieldCheck, UserPlus, Briefcase, DollarSign, Activity as HealthIcon, Save, UserCheck, AlertTriangle, Upload, CheckCircle } from 'lucide-react';
+import { Plus, ChevronRight, Phone, MapPin, Calendar, User, FileText, Activity, Home, Heart, Trash2, Edit, Info, Users, Footprints, Package, Search, X, CreditCard, ShieldCheck, UserPlus, Briefcase, DollarSign, Activity as HealthIcon, Save, UserCheck, AlertTriangle, Upload, CheckCircle, FileDown } from 'lucide-react';
 import { Family, Member, Visit, Delivery } from '../types';
 import { addMemberToFamily, removeMemberFromFamily, upsertFamilyWithMembers, deleteFamily } from '../db';
+import { generateFamiliesPDF, generateFamilyProfilePDF } from '../utils/pdfUtils';
 
 
 interface FamilyManagerProps {
@@ -1413,6 +1414,24 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
           </div>
           <div className="flex items-start gap-2">
             <button 
+              onClick={() => {
+                try {
+                  if (family && members && visits && deliveries) {
+                    generateFamilyProfilePDF(family, members, visits, deliveries);
+                  } else {
+                    alert('Dados não disponíveis para gerar PDF');
+                  }
+                } catch (error) {
+                  console.error('Erro ao gerar PDF:', error);
+                  alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+                }
+              }}
+              className="h-10 w-10 rounded-lg bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700 transition-all shadow-sm shadow-purple-200"
+              title="Download PDF - Perfil da Família"
+            >
+              <FileDown size={18} />
+            </button>
+            <button 
               onClick={() => setIsEditing(true)}
               className="h-10 w-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200"
               title="Editar Cadastro"
@@ -1546,7 +1565,7 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
                              <p className="text-[10px] text-slate-400 font-bold uppercase">{item.data}</p>
                           </div>
                         </div>
-                        <p className="text-xs text-slate-600 leading-relaxed italic bg-white/50 p-2 rounded-lg border border-slate-50">
+                        <p className="text-xs text-slate-600 leading-relaxed italic bg-white/50 p-2 rounded-lg border border-slate-50 break-words overflow-wrap-anywhere whitespace-pre-wrap" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           {isVisit ? (item as Visit).relato : (item as Delivery).tipo}
                         </p>
                       </div>
@@ -1619,8 +1638,26 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
           />
         </div>
         <div className="flex gap-2">
-          <label className="flex items-center gap-2 bg-slate-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-700 transition-all shadow-md shadow-slate-100 cursor-pointer">
-            <Upload size={20} /> Importar Planilha
+          <button
+            onClick={() => {
+              try {
+                if (families && members) {
+                  generateFamiliesPDF(families, members);
+                } else {
+                  alert('Dados não disponíveis para gerar PDF');
+                }
+              } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+              }
+            }}
+            className="flex items-center justify-center w-10 h-10 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-all shadow-md shadow-purple-100"
+            title="Download PDF - Lista de Famílias"
+          >
+            <FileDown size={20} />
+          </button>
+          <label className="flex items-center justify-center w-10 h-10 bg-slate-600 text-white rounded-xl font-semibold hover:bg-slate-700 transition-all shadow-md shadow-slate-100 cursor-pointer" title="Importar Planilha">
+            <Upload size={20} />
             <input
               type="file"
               accept=".csv,.txt,.xlsx,.xls"
@@ -1636,9 +1673,10 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
           </label>
           <button 
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+            className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+            title="Nova Família"
           >
-            <Plus size={20} /> Nova Família
+            <Plus size={20} />
           </button>
         </div>
       </div>

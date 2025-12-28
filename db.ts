@@ -93,15 +93,22 @@ export async function fetchDb(): Promise<DbState> {
 
   // Normalizar valores null para string vazia em campos de texto opcionais
   const normalizeMembers = (members: any[]): Member[] => {
-    return members.map(m => ({
-      ...m,
-      ocupacao: m.ocupacao ?? '',
-      observacaoOcupacao: m.observacaoOcupacao ?? '',
-      renda: m.renda ?? '',
-      comorbidade: m.comorbidade ?? '',
-      escolaridade: m.escolaridade ?? '',
-      trabalho: m.trabalho ?? '',
-    }));
+    return members.map(m => {
+      // O campo no banco está como "familyId" (com aspas), então pode vir assim do Supabase
+      const familyId = m.familyId || m["familyId"] || m["FamilyId"] || m.FamilyId || '';
+      
+      return {
+        ...m,
+        // Garantir que familyId está sempre como camelCase
+        familyId: String(familyId).trim(),
+        ocupacao: m.ocupacao ?? '',
+        observacaoOcupacao: m.observacaoOcupacao ?? '',
+        renda: m.renda ?? '',
+        comorbidade: m.comorbidade ?? '',
+        escolaridade: m.escolaridade ?? '',
+        trabalho: m.trabalho ?? '',
+      };
+    });
   };
 
   return {

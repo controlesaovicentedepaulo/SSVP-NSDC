@@ -219,3 +219,4 @@ on public.deliveries for delete
 using (user_id = auth.uid());
 
 
+
