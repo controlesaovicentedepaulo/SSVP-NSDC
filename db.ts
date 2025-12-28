@@ -98,15 +98,15 @@ export async function fetchDb(): Promise<DbState> {
       const familyId = m.familyId || m["familyId"] || m["FamilyId"] || m.FamilyId || '';
       
       return {
-        ...m,
+      ...m,
         // Garantir que familyId está sempre como camelCase
         familyId: String(familyId).trim(),
-        ocupacao: m.ocupacao ?? '',
-        observacaoOcupacao: m.observacaoOcupacao ?? '',
-        renda: m.renda ?? '',
-        comorbidade: m.comorbidade ?? '',
-        escolaridade: m.escolaridade ?? '',
-        trabalho: m.trabalho ?? '',
+      ocupacao: m.ocupacao ?? '',
+      observacaoOcupacao: m.observacaoOcupacao ?? '',
+      renda: m.renda ?? '',
+      comorbidade: m.comorbidade ?? '',
+      escolaridade: m.escolaridade ?? '',
+      trabalho: m.trabalho ?? '',
       };
     });
   };

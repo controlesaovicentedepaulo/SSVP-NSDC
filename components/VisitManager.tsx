@@ -21,6 +21,8 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
   const [visitToDelete, setVisitToDelete] = useState<Visit | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [searchVisits, setSearchVisits] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Estados para o Searchable Select
   const [searchTerm, setSearchTerm] = useState('');
@@ -546,7 +548,7 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredVisits.sort((a,b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map(v => (
+            {paginatedVisits.map(v => (
               <tr key={v.id} className="hover:bg-slate-50 group cursor-pointer" onClick={() => setSelectedVisit(v)}>
                 <td className="px-6 py-4 text-sm font-medium">
                   <div className="flex items-center gap-2">
@@ -609,6 +611,53 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
           </div>
         )}
       </div>
+
+      {/* Controles de Paginação */}
+      {filteredVisits.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-600 font-medium">Itens por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={-1}>Todos</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-600">
+              Mostrando <span className="font-bold text-slate-800">{startIndex + 1}</span> a{' '}
+              <span className="font-bold text-slate-800">{Math.min(endIndex, sortedVisits.length)}</span> de{' '}
+              <span className="font-bold text-slate-800">{sortedVisits.length}</span>
+            </span>
+            {itemsPerPage !== -1 && totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-slate-600 font-semibold">
+                  Página <span className="text-slate-800">{currentPage}</span> de <span className="text-slate-800">{totalPages}</span>
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Próxima
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
