@@ -13,12 +13,17 @@ import Auth from './components/Auth';
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<AppView>('dashboard');
+  const [currentView, setCurrentView] = useState<AppView>(() => {
+    const savedView = localStorage.getItem('ssvp_currentView');
+    return (savedView as AppView) || 'dashboard';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [data, setData] = useState<DbState>({ families: [], members: [], visits: [], deliveries: [] });
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>(getUserProfile());
-  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(() => {
+    return localStorage.getItem('ssvp_selectedFamilyId');
+  });
   
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
@@ -88,7 +93,26 @@ const App: React.FC = () => {
     await signOut();
     setSession(null);
     setIsUserMenuOpen(false);
+    // Limpar localStorage ao fazer logout
+    localStorage.removeItem('ssvp_currentView');
+    localStorage.removeItem('ssvp_selectedFamilyId');
   };
+
+  // Salvar currentView no localStorage sempre que mudar
+  useEffect(() => {
+    if (session) {
+      localStorage.setItem('ssvp_currentView', currentView);
+    }
+  }, [currentView, session]);
+
+  // Salvar selectedFamilyId no localStorage sempre que mudar
+  useEffect(() => {
+    if (selectedFamilyId) {
+      localStorage.setItem('ssvp_selectedFamilyId', selectedFamilyId);
+    } else {
+      localStorage.removeItem('ssvp_selectedFamilyId');
+    }
+  }, [selectedFamilyId]);
 
   useEffect(() => {
     if (session) void reload();
@@ -161,7 +185,11 @@ const App: React.FC = () => {
         );
       case 'family-details':
         const family = data.families.find(f => f.id === selectedFamilyId);
-        if (!family) return <div className="p-8 text-center text-slate-500">Família não encontrada</div>;
+        if (!family) {
+          // Se a família não for encontrada, voltar para a lista
+          setCurrentView('families');
+          return <div className="p-8 text-center text-slate-500">Família não encontrada</div>;
+        }
         return (
           <div className="space-y-6">
             <button 

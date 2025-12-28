@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Package, Calendar, CheckCircle, User, Users, Search, X, Ban, History, Plus, ArrowLeft, Info, UserCheck, Clock, ChevronRight } from 'lucide-react';
+import { Package, Calendar, CheckCircle, User, Users, Search, X, Ban, History, Plus, ArrowLeft, Info, UserCheck, Clock, ChevronRight, AlertTriangle, Trash2 } from 'lucide-react';
 import { Delivery, Family } from '../types';
 import { addDelivery, deleteDeliveryByFamilyAndDate } from '../db';
 
@@ -15,6 +15,7 @@ interface DeliveryManagerProps {
 const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families, onRefresh }) => {
   const [view, setView] = useState<'history' | 'new-delivery'>('history');
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<Delivery | null>(null);
+  const [deliveryToUndo, setDeliveryToUndo] = useState<{ delivery: Delivery; familyName: string } | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchHistory, setSearchHistory] = useState('');
@@ -55,9 +56,20 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
   };
 
   const handleUndoDelivery = (familyId: string) => {
+    const delivery = deliveries.find(d => d.familyId === familyId && d.data === selectedDate);
+    if (delivery) {
+      const familyName = getFamilyName(familyId);
+      setDeliveryToUndo({ delivery, familyName });
+    }
+  };
+
+  const handleConfirmUndoDelivery = async () => {
+    if (!deliveryToUndo) return;
     (async () => {
       try {
-        await deleteDeliveryByFamilyAndDate(familyId, selectedDate);
+        await deleteDeliveryByFamilyAndDate(deliveryToUndo.delivery.familyId, deliveryToUndo.delivery.data);
+        setDeliveryToUndo(null);
+        setSelectedHistoryItem(null);
         onRefresh();
       } catch (e: any) {
         alert(e?.message || 'Falha ao estornar entrega.');
@@ -71,6 +83,51 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
 
   return (
     <div className="space-y-6 animate-in">
+      {/* Modal de Confirmação de Estorno */}
+      {deliveryToUndo && createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle size={40} />
+              </div>
+              <h4 className="text-2xl font-black text-slate-800 mb-4">Confirmar Estorno de Entrega</h4>
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4">
+                <p className="text-slate-700 text-base font-semibold mb-2">
+                  Você tem certeza que deseja estornar a entrega de:
+                </p>
+                <p className="text-rose-700 text-lg font-black mb-1">
+                  "{deliveryToUndo.familyName}"
+                </p>
+                <p className="text-slate-600 text-sm">
+                  Data: {new Date(deliveryToUndo.delivery.data + 'T00:00:00').toLocaleDateString('pt-BR')}
+                </p>
+                <p className="text-slate-600 text-sm">
+                  Tipo: {deliveryToUndo.delivery.tipo}
+                </p>
+              </div>
+              <p className="text-rose-600 text-xs font-bold">
+                Esta ação não pode ser desfeita.
+              </p>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <button 
+                onClick={() => setDeliveryToUndo(null)} 
+                className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-sm font-bold hover:bg-slate-100 transition-all"
+              >
+                Não, cancelar
+              </button>
+              <button 
+                onClick={handleConfirmUndoDelivery}
+                className="flex-1 px-6 py-4 bg-rose-600 text-white rounded-2xl text-sm font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} /> Sim, estornar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       {/* Modal de Detalhes da Entrega */}
       {selectedHistoryItem && createPortal(
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
@@ -161,10 +218,21 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
                   </div>
                 </div>
               )}
-              <div className="pt-4 border-t border-slate-100">
+              <div className="pt-4 border-t border-slate-100 flex gap-3">
+                <button 
+                  onClick={() => {
+                    setDeliveryToUndo({ 
+                      delivery: selectedHistoryItem, 
+                      familyName: getFamilyName(selectedHistoryItem.familyId) 
+                    });
+                  }}
+                  className="flex-1 px-6 py-3 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 flex items-center justify-center gap-2"
+                >
+                  <Ban size={18} /> Estornar Entrega
+                </button>
                 <button 
                   onClick={() => setSelectedHistoryItem(null)} 
-                  className="w-full px-6 py-3 bg-orange-600 text-white rounded-xl text-sm font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-100"
+                  className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-300 transition-all"
                 >
                   Fechar
                 </button>
