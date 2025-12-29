@@ -61,7 +61,10 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
 
   // Estados controlados para manter valores dos selects durante re-renderizações
   const [ocupacaoAssistido, setOcupacaoAssistido] = useState('');
+  const [ocupacaoAssistidoOutro, setOcupacaoAssistidoOutro] = useState('');
   const [ocupacoesMembros, setOcupacoesMembros] = useState<{ [key: number]: string }>({});
+  const [parentescosMembros, setParentescosMembros] = useState<{ [key: number]: string }>({});
+  const [parentescosMembrosOutro, setParentescosMembrosOutro] = useState<{ [key: number]: string }>({});
 
   // Estados controlados para campos formatados
   const [cpfValue, setCpfValue] = useState('');
@@ -214,7 +217,15 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
       
       // Inicializar ocupação do assistido
       if (members[0]?.ocupacao) {
-        setOcupacaoAssistido(members[0].ocupacao);
+        const ocupacao = members[0].ocupacao;
+        if (OCUPACOES_CONHECIDAS.has(ocupacao)) {
+          setOcupacaoAssistido(ocupacao);
+          setOcupacaoAssistidoOutro('');
+        } else {
+          // Se não for uma ocupação conhecida, assume que é "Outro"
+          setOcupacaoAssistido('Outro');
+          setOcupacaoAssistidoOutro(ocupacao);
+        }
       }
       
       // Inicializar campos formatados
@@ -237,22 +248,38 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
       const rendaVis: { [key: number]: boolean } = {};
       const comoVis: { [key: number]: boolean } = {};
       const ocupacoes: { [key: number]: string } = {};
+      const parentescos: { [key: number]: string } = {};
+      const parentescosOutro: { [key: number]: string } = {};
       members.forEach((m, idx) => {
         if (idx > 0) {
           rendaVis[idx] = m.renda !== 'R$ 0,00' && m.renda !== '';
           comoVis[idx] = m.comorbidade !== 'Não possui' && m.comorbidade !== '';
           ocupacoes[idx] = m.ocupacao || '';
+          const parentesco = m.parentesco || '';
+          if (PARENTESCOS_CONHECIDOS.has(parentesco)) {
+            parentescos[idx] = parentesco;
+            parentescosOutro[idx] = '';
+          } else {
+            // Se não for um parentesco conhecido, assume que é "Outro"
+            parentescos[idx] = 'Outro';
+            parentescosOutro[idx] = parentesco;
+          }
         }
       });
       setMembrosRendaVisivel(rendaVis);
       setMembrosComorbidadeVisivel(comoVis);
       setOcupacoesMembros(ocupacoes);
+      setParentescosMembros(parentescos);
+      setParentescosMembrosOutro(parentescosOutro);
       
       initializedRef.current = family.id;
     } else if (isAdding && !isEditing && initializedRef.current !== 'new') {
       // Resetar estados ao iniciar novo cadastro
       setOcupacaoAssistido('');
+      setOcupacaoAssistidoOutro('');
       setOcupacoesMembros({});
+      setParentescosMembros({});
+      setParentescosMembrosOutro({});
       setCpfValue('');
       setRgValue('');
       setTelefoneValue('');
@@ -316,8 +343,37 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
       <option value="Desempregado">Desempregado</option>
       <option value="Autônomo">Autônomo / Bico</option>
       <option value="Aposentado">Aposentado / Pensionista</option>
+      <option value="Do Lar">Do Lar</option>  
+      <option value="Outro">Outro</option>
     </>
   );
+
+  const OCUPACOES_CONHECIDAS = new Set([
+    'Estudante',
+    'Empregado',
+    'Beneficiario',
+    'Desempregado',
+    'Autônomo',
+    'Aposentado',
+    'Do Lar',
+    'Outro',
+  ]);
+
+  const PARENTESCOS_CONHECIDOS = new Set([
+    'Filho(a)',
+    'Cônjuge',
+    'Neto(a)',
+    'Enteado(a)',
+    'Pai / Mãe',
+    'Avô(ó)',
+    'Tio(a)',
+    'Sogro(a)',
+    'Sobrinho(a)',
+    'Genro / Nora',
+    'Bisneto(a)',
+    'Irmão(ã)',
+    'Outro',
+  ]);
 
   const handleMemberRendaChange = (idx: number, value: string) => {
     setMembrosRendaVisivel(prev => ({ ...prev, [idx]: value === 'Sim' }));
@@ -659,7 +715,13 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
           const idadeAssistido = idadeAssistidoCalculada !== '' ? Number(idadeAssistidoCalculada) : 0;
           
           const ocupacaoAssistido = (formData.get('ocupacao_assistido') as string)?.trim() || '';
+          const ocupacaoAssistidoOutroValue = ocupacaoAssistido === 'Outro' ? (formData.get('ocupacao_assistido_outro') as string)?.trim() || '' : '';
           const obsOcupacaoAssistido = (formData.get('obs_ocupacao_assistido') as string)?.trim() || '';
+          
+          // Se for "Outro", usar o valor customizado; caso contrário, usar o valor do select
+          const ocupacaoFinal = ocupacaoAssistido === 'Outro' && ocupacaoAssistidoOutroValue 
+            ? ocupacaoAssistidoOutroValue 
+            : (ocupacaoAssistido && ocupacaoAssistido !== 'Selecione...' ? ocupacaoAssistido : '');
           
           const formMembers: Member[] = [{
             id: isEditing ? (targetMembers[0]?.id || `${familyId}_head`) : `${familyId}_head`,
@@ -668,7 +730,7 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
             idade: idadeAssistido,
             parentesco: 'Próprio(a)',
             nascimento: nascimentoAssistido,
-            ocupacao: ocupacaoAssistido && ocupacaoAssistido !== 'Selecione...' ? ocupacaoAssistido : '',
+            ocupacao: ocupacaoFinal,
             observacaoOcupacao: obsOcupacaoAssistido,
             renda: temRendaAssistido ? parseCurrencyToDisplay(rendaAssistidoValue) : 'R$ 0,00',
             comorbidade: temComorbidadeAssistido ? (formData.get('comorbidade_detalhe_assistido') as string) : 'Não possui'
@@ -684,12 +746,19 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
                 const ocupacaoMemberFinal = ocupacaoMember && ocupacaoMember !== 'Selecione...' ? ocupacaoMember : '';
                 const obsOcupacaoMember = (formData.get(`member_obs_ocupacao_${i}`) as string)?.trim() || '';
                 
+                // Processar parentesco: se for "Outro", usar o valor customizado
+                const parentescoMember = parentescosMembros[i] || 'Filho(a)';
+                const parentescoMemberOutroValue = parentescoMember === 'Outro' ? (formData.get(`member_parentesco_outro_${i}`) as string)?.trim() || '' : '';
+                const parentescoFinal = parentescoMember === 'Outro' && parentescoMemberOutroValue 
+                  ? parentescoMemberOutroValue 
+                  : (parentescoMember || 'Filho(a)');
+                
                 formMembers.push({
                   id: isEditing && targetMembers[i] ? targetMembers[i].id : `${familyId}_m_${i}`,
                   familyId: familyId,
                   nome: nome,
                   idade: idadesMembrosCalculadas[i] !== '' ? Number(idadesMembrosCalculadas[i]) : 0,
-                  parentesco: formData.get(`member_parentesco_${i}`) as string,
+                  parentesco: parentescoFinal,
                   nascimento: nascimentosMembros[i] || '',
                   ocupacao: ocupacaoMemberFinal,
                   observacaoOcupacao: obsOcupacaoMember,
@@ -849,12 +918,30 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
                 <select 
                   name="ocupacao_assistido" 
                   value={ocupacaoAssistido}
-                  onChange={(e) => setOcupacaoAssistido(e.target.value)}
+                  onChange={(e) => {
+                    setOcupacaoAssistido(e.target.value);
+                    if (e.target.value !== 'Outro') {
+                      setOcupacaoAssistidoOutro('');
+                    }
+                  }}
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   <OcupacaoOptions />
                 </select>
               </div>
+              {ocupacaoAssistido === 'Outro' && (
+                <div className="space-y-2 animate-in slide-in-from-top-2">
+                  <label className="text-xs font-bold text-slate-700">Especifique a Ocupação</label>
+                  <input 
+                    name="ocupacao_assistido_outro" 
+                    value={ocupacaoAssistidoOutro}
+                    onChange={(e) => setOcupacaoAssistidoOutro(e.target.value)}
+                    placeholder="Digite a ocupação" 
+                    required
+                    className="w-full px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700">Observação Ocupação</label>
                 <input name="obs_ocupacao_assistido" defaultValue={isEditing ? targetMembers[0]?.observacaoOcupacao : ''} placeholder="Ex: Vendedor de balas, BPC, etc" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
@@ -987,16 +1074,60 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
                         </div>
                         <div className="md:col-span-1 space-y-1">
                           <label className="text-[10px] font-bold text-slate-400 uppercase">Parentesco</label>
-                          <select name={`member_parentesco_${idx}`} defaultValue={memberData?.parentesco || 'Filho(a)'} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm">
+                          <select 
+                            name={`member_parentesco_${idx}`}
+                            value={(() => {
+                              if (parentescosMembros[idx] !== undefined) {
+                                return parentescosMembros[idx];
+                              }
+                              if (memberData?.parentesco) {
+                                return PARENTESCOS_CONHECIDOS.has(memberData.parentesco) ? memberData.parentesco : 'Outro';
+                              }
+                              return 'Filho(a)';
+                            })()}
+                            onChange={(e) => {
+                              setParentescosMembros(prev => ({ ...prev, [idx]: e.target.value }));
+                              if (e.target.value !== 'Outro') {
+                                setParentescosMembrosOutro(prev => ({ ...prev, [idx]: '' }));
+                              }
+                            }}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
+                          >
                             <option>Filho(a)</option>
                             <option>Cônjuge</option>
                             <option>Neto(a)</option>
                             <option>Enteado(a)</option>
                             <option>Pai / Mãe</option>
+                            <option>Avô(ó)</option>
+                            <option>Tio(a)</option>
+                            <option>Sogro(a)</option>
+                            <option>Sobrinho(a)</option>
+                            <option>Genro / Nora</option>
+                            <option>Bisneto(a)</option>
                             <option>Irmão(ã)</option>
                             <option>Outro</option>
                           </select>
                         </div>
+                        {(() => {
+                          const currentValue = parentescosMembros[idx] !== undefined 
+                            ? parentescosMembros[idx] 
+                            : (memberData?.parentesco && PARENTESCOS_CONHECIDOS.has(memberData.parentesco) 
+                              ? memberData.parentesco 
+                              : (memberData?.parentesco ? 'Outro' : 'Filho(a)'));
+                          return currentValue === 'Outro';
+                        })() && (
+                          <div className="md:col-span-1 space-y-1 animate-in slide-in-from-right-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Especifique</label>
+                            <input 
+                              name={`member_parentesco_outro_${idx}`}
+                              value={parentescosMembrosOutro[idx] ?? (memberData?.parentesco && !PARENTESCOS_CONHECIDOS.has(memberData.parentesco) ? memberData.parentesco : '')}
+                              onChange={(e) => setParentescosMembrosOutro(prev => ({ ...prev, [idx]: e.target.value }))}
+                              placeholder="Digite o parentesco"
+                              required
+                              className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm"
+                            />
+                          </div>
+                        )}
                         <div className="md:col-span-1 space-y-1">
                           <label className="text-[10px] font-bold text-slate-400 uppercase">Data Nasc.</label>
                           <input 
@@ -1265,6 +1396,12 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
                       <option>Neto(a)</option>
                       <option>Enteado(a)</option>
                       <option>Pai / Mãe</option>
+                      <option>Avô(ó)</option>
+                      <option>Tio(a)</option>
+                      <option>Sogro(a)</option>
+                      <option>Sobrinho(a)</option>
+                      <option>Genro / Nora</option>
+                      <option>Bisneto(a)</option>
                       <option>Irmão(ã)</option>
                       <option>Outro</option>
                     </select>
