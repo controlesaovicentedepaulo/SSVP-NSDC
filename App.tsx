@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [currentView, setCurrentView] = useState<AppView>(() => {
+    // Ao recarregar, sempre manter a view salva (reload)
     const savedView = localStorage.getItem('ssvp_currentView');
     return (savedView as AppView) || 'dashboard';
   });
@@ -46,6 +47,8 @@ const App: React.FC = () => {
     }
   };
 
+  const hadInitialSessionRef = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -54,6 +57,7 @@ const App: React.FC = () => {
         const s = await getSession();
         if (cancelled) return;
         if (s) {
+          hadInitialSessionRef.current = true; // Marcamos que já tinha sessão ao carregar
           setSession(s);
           updateProfileFromSession(s);
         }
@@ -64,10 +68,19 @@ const App: React.FC = () => {
       }
     })();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
-      if (newSession) updateProfileFromSession(newSession);
-      if (!newSession) setData({ families: [], members: [], visits: [], deliveries: [] });
+      if (newSession) {
+        updateProfileFromSession(newSession);
+        // Se for SIGNED_IN e não tinha sessão inicial, é um novo login - ir para dashboard
+        if (event === 'SIGNED_IN' && !hadInitialSessionRef.current) {
+          setCurrentView('dashboard');
+        }
+      } else {
+        setData({ families: [], members: [], visits: [], deliveries: [] });
+        // Resetar flag ao fazer logout
+        hadInitialSessionRef.current = false;
+      }
     });
 
     return () => {
@@ -96,6 +109,8 @@ const App: React.FC = () => {
     // Limpar localStorage ao fazer logout
     localStorage.removeItem('ssvp_currentView');
     localStorage.removeItem('ssvp_selectedFamilyId');
+    // Resetar flag de sessão inicial
+    hadInitialSessionRef.current = false;
   };
 
   // Salvar currentView no localStorage sempre que mudar
@@ -158,7 +173,11 @@ const App: React.FC = () => {
   }
 
   if (!session) {
-    return <Auth onSuccess={(newSession) => setSession(newSession)} />;
+    return <Auth onSuccess={(newSession) => {
+      setSession(newSession);
+      // Ao fazer login pelo componente Auth, sempre ir para dashboard
+      setCurrentView('dashboard');
+    }} />;
   }
 
   const renderView = () => {
