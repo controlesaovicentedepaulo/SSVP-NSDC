@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Package, Calendar, CheckCircle, User, Users, Search, X, Ban, History, Plus, ArrowLeft, Info, UserCheck, Clock, ChevronRight, AlertTriangle, Trash2, FileDown } from 'lucide-react';
 import { Delivery, Family } from '../types';
@@ -21,6 +21,8 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
   const [searchTerm, setSearchTerm] = useState('');
   const [searchHistory, setSearchHistory] = useState('');
   const [selectedType, setSelectedType] = useState('Cesta Básica (Padrão)');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const activeFamiliesSorted = useMemo(() => {
     return families
@@ -33,6 +35,31 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
     deliveries.filter(d => d.data === selectedDate).forEach(d => map.set(d.familyId, d));
     return map;
   }, [deliveries, selectedDate]);
+
+  // Filtrar e ordenar entregas do histórico
+  const filteredHistory = useMemo(() => {
+    return deliveries
+      .filter(d => {
+        if (!searchHistory) return true;
+        const familyName = families.find(f => f.id === d.familyId)?.nomeAssistido?.toLowerCase() || '';
+        const dateStr = new Date(d.data + 'T00:00:00').toLocaleDateString('pt-BR').toLowerCase();
+        const status = d.status?.toLowerCase() || '';
+        const searchLower = searchHistory.toLowerCase();
+        return familyName.includes(searchLower) || dateStr.includes(searchLower) || status.includes(searchLower);
+      })
+      .sort((a,b) => b.data.localeCompare(a.data));
+  }, [deliveries, families, searchHistory]);
+
+  // Paginação
+  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(filteredHistory.length / itemsPerPage);
+  const startIndex = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex = itemsPerPage === -1 ? filteredHistory.length : startIndex + itemsPerPage;
+  const paginatedHistory = filteredHistory.slice(startIndex, endIndex);
+
+  // Resetar página quando mudar filtro ou itens por página
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchHistory, itemsPerPage]);
 
   const handleMarkAsDelivered = (family: Family, status: 'Entregue' | 'Não Entregue', retiradoPor?: 'Próprio' | 'Outros', detalhe?: string) => {
     const newDelivery: Delivery = {
@@ -290,16 +317,7 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {deliveries
-                  .filter(d => {
-                    if (!searchHistory) return true;
-                    const familyName = families.find(f => f.id === d.familyId)?.nomeAssistido?.toLowerCase() || '';
-                    const dateStr = new Date(d.data + 'T00:00:00').toLocaleDateString('pt-BR').toLowerCase();
-                    const status = d.status?.toLowerCase() || '';
-                    const searchLower = searchHistory.toLowerCase();
-                    return familyName.includes(searchLower) || dateStr.includes(searchLower) || status.includes(searchLower);
-                  })
-                  .sort((a,b) => b.data.localeCompare(a.data)).map(d => (
+                {paginatedHistory.map(d => (
                   <tr key={d.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedHistoryItem(d)}>
                     <td className="px-6 py-4 text-sm font-medium">{new Date(d.data + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                     <td className="px-6 py-4 text-sm font-bold">{families.find(f => f.id === d.familyId)?.nomeAssistido}</td>
@@ -314,6 +332,53 @@ const DeliveryManager: React.FC<DeliveryManagerProps> = ({ deliveries, families,
               </tbody>
             </table>
           </div>
+
+          {/* Controles de Paginação */}
+          {filteredHistory.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-600 font-medium">Itens por página:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  <option value={10}>10</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={-1}>Todos</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-slate-600">
+                  Mostrando <span className="font-bold text-slate-800">{startIndex + 1}</span> a{' '}
+                  <span className="font-bold text-slate-800">{Math.min(endIndex, filteredHistory.length)}</span> de{' '}
+                  <span className="font-bold text-slate-800">{filteredHistory.length}</span>
+                </span>
+                {itemsPerPage !== -1 && totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-sm text-slate-600 font-semibold">
+                      Página <span className="text-slate-800">{currentPage}</span> de <span className="text-slate-800">{totalPages}</span>
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-6">

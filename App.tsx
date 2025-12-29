@@ -175,7 +175,7 @@ const App: React.FC = () => {
       case 'families':
         return (
           <FamilyManager 
-            families={data.families}
+            families={data.families} 
             members={data.members}
             onViewDetails={(id) => {
               setSelectedFamilyId(id);

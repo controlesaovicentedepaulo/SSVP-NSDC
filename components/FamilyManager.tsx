@@ -44,6 +44,8 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
   const [totalMoradores, setTotalMoradores] = useState(1);
   const [temRendaAssistido, setTemRendaAssistido] = useState(false);
   const [temComorbidadeAssistido, setTemComorbidadeAssistido] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Estados para o Modal de Adicionar Membro Avulso
   const [newMemberRendaVisible, setNewMemberRendaVisible] = useState(false);
@@ -286,6 +288,24 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
     f.nomeAssistido.toLowerCase().includes(search.toLowerCase()) || 
     f.bairro.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Ordenar por número de ficha (do maior para o menor)
+  const sortedFamilies = [...filteredFamilies].sort((a, b) => {
+    const fichaA = parseInt(a.ficha) || 0;
+    const fichaB = parseInt(b.ficha) || 0;
+    return fichaB - fichaA; // Maior para menor
+  });
+
+  // Paginação
+  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(sortedFamilies.length / itemsPerPage);
+  const startIndex = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex = itemsPerPage === -1 ? sortedFamilies.length : startIndex + itemsPerPage;
+  const paginatedFamilies = sortedFamilies.slice(startIndex, endIndex);
+
+  // Resetar página quando mudar filtro ou itens por página
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, itemsPerPage]);
 
   const OcupacaoOptions = () => (
     <>
@@ -1656,7 +1676,8 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
           >
             <FileDown size={20} />
           </button>
-          <label className="flex items-center justify-center w-10 h-10 bg-slate-600 text-white rounded-xl font-semibold hover:bg-slate-700 transition-all shadow-md shadow-slate-100 cursor-pointer" title="Importar Planilha">
+          {/* Botão de Importar Planilha - Comentado para uso futuro */}
+          {/* <label className="flex items-center justify-center w-10 h-10 bg-slate-600 text-white rounded-xl font-semibold hover:bg-slate-700 transition-all shadow-md shadow-slate-100 cursor-pointer" title="Importar Planilha">
             <Upload size={20} />
             <input
               type="file"
@@ -1670,7 +1691,7 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
                 e.target.value = '';
               }}
             />
-          </label>
+          </label> */}
           <button 
             onClick={() => setIsAdding(true)}
             className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
@@ -1694,7 +1715,7 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredFamilies.map((f) => (
+              {paginatedFamilies.map((f) => (
                 <tr key={f.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -1740,6 +1761,53 @@ const FamilyManager: React.FC<FamilyManagerProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Controles de Paginação */}
+      {sortedFamilies.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-600 font-medium">Itens por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={-1}>Todos</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-600">
+              Mostrando <span className="font-bold text-slate-800">{startIndex + 1}</span> a{' '}
+              <span className="font-bold text-slate-800">{Math.min(endIndex, sortedFamilies.length)}</span> de{' '}
+              <span className="font-bold text-slate-800">{sortedFamilies.length}</span>
+            </span>
+            {itemsPerPage !== -1 && totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-slate-600 font-semibold">
+                  Página <span className="text-slate-800">{currentPage}</span> de <span className="text-slate-800">{totalPages}</span>
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Próxima
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

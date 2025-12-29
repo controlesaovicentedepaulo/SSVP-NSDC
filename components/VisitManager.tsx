@@ -21,6 +21,8 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
   const [visitToDelete, setVisitToDelete] = useState<Visit | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [searchVisits, setSearchVisits] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Estados para o Searchable Select
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +49,22 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
     const searchLower = searchVisits.toLowerCase();
     return familyName.includes(searchLower) || motivo.includes(searchLower) || relato.includes(searchLower);
   });
+
+  // Ordenar visitas por data (mais recente primeiro)
+  const sortedVisits: Visit[] = [...filteredVisits].sort((a, b) => 
+    new Date(b.data).getTime() - new Date(a.data).getTime()
+  );
+
+  // Paginação
+  const totalPages: number = itemsPerPage === -1 ? 1 : Math.ceil(sortedVisits.length / itemsPerPage);
+  const startIndex: number = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex: number = itemsPerPage === -1 ? sortedVisits.length : startIndex + itemsPerPage;
+  const paginatedVisits: Visit[] = sortedVisits.slice(startIndex, endIndex);
+
+  // Resetar página quando mudar filtro ou itens por página
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchVisits, itemsPerPage]);
 
   // Sincronizar estado inicial ao editar ou selecionar família
   useEffect(() => {
@@ -163,16 +181,16 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
           >
             <FileDown size={20} />
           </button>
-          <button 
-            onClick={() => {
-              setEditingVisit(null);
-              setIsAdding(true);
-            }}
+        <button 
+          onClick={() => {
+            setEditingVisit(null);
+            setIsAdding(true);
+          }}
             className="flex items-center justify-center w-10 h-10 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100"
             title="Registrar Visita"
-          >
+        >
             <Plus size={20} />
-          </button>
+        </button>
         </div>
       </div>
 
@@ -433,7 +451,7 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
                     {selectedVisit.motivo ? (
                       <span className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase">
                         <Info size={12} /> {selectedVisit.motivo}
-                      </span>
+                    </span>
                     ) : (
                       <span className="text-slate-400 text-sm">Não informado</span>
                     )}
@@ -546,7 +564,7 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredVisits.sort((a,b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map(v => (
+            {paginatedVisits.map((v: Visit) => (
               <tr key={v.id} className="hover:bg-slate-50 group cursor-pointer" onClick={() => setSelectedVisit(v)}>
                 <td className="px-6 py-4 text-sm font-medium">
                   <div className="flex items-center gap-2">
@@ -609,6 +627,53 @@ const VisitManager: React.FC<VisitManagerProps> = ({ visits, families, members, 
           </div>
         )}
       </div>
+
+      {/* Controles de Paginação */}
+      {filteredVisits.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-600 font-medium">Itens por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={-1}>Todos</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-600">
+              Mostrando <span className="font-bold text-slate-800">{startIndex + 1}</span> a{' '}
+              <span className="font-bold text-slate-800">{Math.min(endIndex, sortedVisits.length)}</span> de{' '}
+              <span className="font-bold text-slate-800">{sortedVisits.length}</span>
+            </span>
+            {itemsPerPage !== -1 && totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-slate-600 font-semibold">
+                  Página <span className="text-slate-800">{currentPage}</span> de <span className="text-slate-800">{totalPages}</span>
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Próxima
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
