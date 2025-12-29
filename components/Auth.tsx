@@ -22,12 +22,19 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
     setError(null);
     setInfo(null);
     try {
+      const cleanEmail = email.trim();
+      const cleanPassword = password;
+
+      if (!cleanEmail || !cleanPassword) {
+        throw new Error('Informe e-mail e senha.');
+      }
+
       const session =
         mode === 'login'
-          ? await signInWithPassword(email.trim(), password)
+          ? await signInWithPassword(cleanEmail, cleanPassword)
           : await signUpWithPassword({
-              email: email.trim(),
-              password,
+              email: cleanEmail,
+              password: cleanPassword,
               fullName: fullName.trim() || undefined,
               conference: conference.trim() || undefined,
             });
@@ -40,7 +47,15 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
 
       onSuccess(session);
     } catch (err: any) {
-      setError(err?.message || 'Falha ao autenticar.');
+      const msg = String(err?.message || 'Falha ao autenticar.');
+      // Mensagens comuns do Supabase para login/senha inválidos
+      if (msg.toLowerCase().includes('invalid login credentials')) {
+        setError('E-mail ou senha inválidos.');
+      } else if (msg.toLowerCase().includes('email not confirmed')) {
+        setError('Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada e confirme para conseguir entrar.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

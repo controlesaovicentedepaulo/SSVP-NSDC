@@ -3,6 +3,10 @@
    CONFIGURAÇÕES GLOBAIS E RESETS
    ========================================================================== */
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --primary-blue: #1e40af;
   --bg-main: #f8fafc;
@@ -66,16 +70,18 @@ html, body, #root {
 }
 
 /* Card Style Standard */
-.ssvp-card {
-  @apply bg-white border border-slate-200 shadow-sm rounded-2xl;
-}
+@layer components {
+  .ssvp-card {
+    @apply bg-white border border-slate-200 shadow-sm rounded-2xl;
+  }
 
-/* Input Style Standard */
-.ssvp-input {
-  @apply w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all;
-}
+  /* Input Style Standard */
+  .ssvp-input {
+    @apply w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all;
+  }
 
-/* Button Primary */
-.ssvp-btn-primary {
-  @apply bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2;
+  /* Button Primary */
+  .ssvp-btn-primary {
+    @apply bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2;
+  }
 }

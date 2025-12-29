@@ -5,27 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SSVP - Controle de Assistidos</title>
-    <!-- Tailwind Play CDN para garantir que as classes funcionem sem build step complexo -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              ssvp: {
-                blue: '#1e40af',
-                light: '#eff6ff',
-              }
-            }
-          }
-        }
-      }
-    </script>
-    <script type="importmap">
+    <!--
+      Tailwind em produção deve ser via PostCSS/Tailwind (já configurado no projeto).
+      Não use cdn.tailwindcss.com aqui.
+    -->
+    <!-- <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.0.0",
@@ -39,8 +25,7 @@
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
-</script>
-<link rel="stylesheet" href="/index.css">
+    </script> -->
 </head>
 <body class="bg-slate-50 text-slate-900 m-0 p-0 font-sans antialiased">
     <div id="root"></div>
